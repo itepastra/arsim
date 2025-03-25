@@ -1,6 +1,6 @@
 use std::f64::INFINITY;
 
-use ndarray::{Axis, stack};
+use ndarray::{AssignElem, Axis, stack};
 
 use crate::{Error, Float, ThreeDee, TwoDee};
 
@@ -39,11 +39,7 @@ pub fn atomic_distances(
     let relative_positions = stack!(Axis(2), dists[0], dists[1], dists[2]);
     let mut distances =
         (&dists[0] * &dists[0] + &dists[1] * &dists[1] + &dists[2] * &dists[2]).sqrt();
-    distances.map_inplace(|dist| {
-        if *dist == 0.0 {
-            *dist = INFINITY as Float
-        }
-    });
+    distances.diag_mut().fill(INFINITY as Float);
     assert!(!relative_positions.is_any_nan());
     assert_eq!(relative_positions.shape()[0], amount_of_particles);
     assert_eq!(relative_positions.shape()[1], amount_of_particles);

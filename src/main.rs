@@ -1,10 +1,11 @@
-use integrator::{Integrator, Verlet};
+use integrator::{Integrator, Verlet, VerletCUDA};
 use ndarray::{ArrayBase, Dim, OwnedRepr};
 
 mod initialisation;
 mod integrator;
 mod physics;
 
+type OneDee = ArrayBase<OwnedRepr<Float>, Dim<[usize; 1]>>;
 type TwoDee = ArrayBase<OwnedRepr<Float>, Dim<[usize; 2]>>;
 type ThreeDee = ArrayBase<OwnedRepr<Float>, Dim<[usize; 3]>>;
 type Error = Box<dyn std::error::Error>;
@@ -22,7 +23,8 @@ fn main() -> Result<(), Error> {
     let velocities = initialisation::initial_velocities(NUMBER_OF_PARTICLES, 0.01, SEED)?;
 
     let mut integrator = Verlet {};
-    integrator.simulate(positions, velocities, TIME_STEP, TOTAL_TIME, BOX_SIZE);
+    let result = integrator.simulate(positions, velocities, TIME_STEP, TOTAL_TIME, BOX_SIZE)?;
+    println!("{:#?}", result);
 
     Ok(())
 }

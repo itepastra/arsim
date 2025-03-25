@@ -1,10 +1,8 @@
-use std::default;
-
 use indicatif::{ProgressBar, ProgressStyle};
-use ndarray::{Array, Axis, NewAxis};
+use ndarray::{Array, Axis, Dimension};
 
 use crate::{
-    Error, Float, ThreeDee, TwoDee,
+    Error, Float, OneDee, ThreeDee, TwoDee,
     physics::{atomic_distances, kinetic_energy, lj_force, potential_energy, temperature},
 };
 
@@ -16,8 +14,18 @@ pub struct IntegrationStepResult {
     distances: TwoDee,
 }
 
+#[derive(Debug)]
+pub struct IntegrationResult {
+    positions: ThreeDee,
+    velocities: ThreeDee,
+    virials: OneDee,
+    kinetic_energies: OneDee,
+    potential_energies: OneDee,
+}
+
 pub trait Integrator {
     fn initialisation(&mut self) -> Result<(), Error>;
+    fn deinit(&mut self) -> Result<(), Error>;
     fn integration_step(
         &mut self,
         positions: TwoDee,
@@ -33,7 +41,7 @@ pub trait Integrator {
         time_step_size: Float,
         max_time: Float,
         box_dim: Float,
-    ) -> Result<(), Error> {
+    ) -> Result<IntegrationResult, Error> {
         assert_eq!(
             initial_positions.shape()[0],
             initial_velocities.shape()[0],
@@ -105,7 +113,13 @@ pub trait Integrator {
             distances = new_distances;
         }
         bar.finish_with_message("Finished simulation");
-        Ok(())
+        Ok(IntegrationResult {
+            positions,
+            velocities,
+            virials,
+            kinetic_energies,
+            potential_energies,
+        })
     }
 }
 
@@ -113,6 +127,48 @@ pub struct Verlet {}
 
 impl Integrator for Verlet {
     fn initialisation(&mut self) -> Result<(), Error> {
+        Ok(())
+    }
+
+    fn deinit(&mut self) -> Result<(), Error> {
+        Ok(())
+    }
+
+    fn integration_step(
+        &mut self,
+        positions: TwoDee,
+        velocities: TwoDee,
+        forces: TwoDee,
+        time_step_size: Float,
+        box_dim: Float,
+    ) -> Result<IntegrationStepResult, Error> {
+        let new_positions = positions
+            + &velocities * time_step_size
+            + &forces * time_step_size * time_step_size * 0.5;
+        let (relative_positions, new_distances) = atomic_distances(&new_positions, box_dim)?;
+        let (new_magnitudes, new_forces) = lj_force(relative_positions, &new_distances);
+        let dvel = (forces + &new_forces) * time_step_size * 0.5;
+        let new_velocities = velocities + dvel;
+
+        Ok(IntegrationStepResult {
+            positions: new_positions,
+            velocities: new_velocities,
+            forces: new_forces,
+            force_magnitudes: new_magnitudes,
+            distances: new_distances,
+        })
+    }
+}
+
+pub struct VerletCUDA {}
+
+impl Integrator for VerletCUDA {
+    fn initialisation(&mut self) -> Result<(), Error> {
+        todo!("implement CUDA integrator");
+        Ok(())
+    }
+
+    fn deinit(&mut self) -> Result<(), Error> {
         Ok(())
     }
 

@@ -8,7 +8,7 @@ indicatif = "0.17.11"
 itertools = "0.14.0"
 meshgridrs = "0.1.1"
 ndarray = "0.16.1"
-ndarray-linalg = { version = "0.17.0", features = ["openblas"] }
+ndarray-linalg = { version = "0.17.0", features = ["openblas-system"] }
 plotters = "0.3.7"
 rand = "0.9.0"
 rand_distr = "0.5.1"
